@@ -1,5 +1,5 @@
-import polars as pl
-from sklearn.ensemble import IsolationForest
+import duckdb
+import pyod.models.iforest as iforest  # Isolation Forest from PyOD
 import numpy as np
 from datetime import datetime
 import os
@@ -7,95 +7,85 @@ import os
 """
 edc_validator.py
 
-MVP script for real-time clinical data validation and compliance checking.
-Initiated January 2026 as part of ClinicalDataComplianceTool-Prototype.
-
-Usage:
-    python edc_validator.py
+MVP script using DuckDB for data handling/validation and PyOD for anomaly detection.
+Validates mock clinical trial data against predefined rules and detects anomalies.
 """
 
 # === CONFIG ===
-INPUT_FILE = "mock_clinical_data.csv"
-OUTPUT_DIR = "output"
+INPUT_FILE = f"/mock_clinical_data.csv"
+OUTPUT_DIR = f"output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# === VALIDATION RULES (easy to extend) ===
-def apply_rules(df: pl.DataFrame) -> pl.DataFrame:
-    """Apply business rules for clinical data compliance."""
-    return df.with_columns([
-        # Age: 18–100
-        pl.col("age").is_between(18, 100).alias("age_valid"),
-        # Systolic BP: 90–180, not null
-        (pl.col("systolic_bp").is_between(90, 180) & pl.col("systolic_bp").is_not_null()).alias("bp_valid"),
-        # Treatment dose: > 0, not null
-        (pl.col("treatment_dose").gt(0) & pl.col("treatment_dose").is_not_null()).alias("dose_valid"),
-        # Visit date: not null and reasonable (after 2000)
-        pl.col("visit_date").str.strptime(pl.Date, "%Y-%m-%d").is_not_null().alias("date_valid")
-    ])
-
-# === ANOMALY DETECTION ===
-def detect_anomalies(df: pl.DataFrame) -> pl.DataFrame:
-    """Basic statistical anomaly detection on numeric columns."""
-    numeric_cols = ["age", "systolic_bp", "treatment_dose"]
-    # Fill nulls temporarily for model
-    data = df.select(numeric_cols).fill_null(0).to_numpy()
+# === Load & Validate with DuckDB (SQL rules) ===
+def load_and_validate():
+    con = duckdb.connect()
     
-    if len(data) < 3:  # Isolation Forest needs some data
-        return df.with_columns(pl.lit(1).alias("anomaly"))  # 1 = normal
+    # Register CSV as table
+    con.execute(f"CREATE TABLE clinical_data AS SELECT * FROM read_csv_auto('{INPUT_FILE}')")
+    
+    # Apply simple rules via SQL (easy to read/audit)
+    con.execute("""
+        SELECT *,
+               CASE WHEN age BETWEEN 18 AND 100 THEN 1 ELSE 0 END AS age_valid,
+               CASE WHEN systolic_bp BETWEEN 90 AND 180 AND systolic_bp IS NOT NULL THEN 1 ELSE 0 END AS bp_valid,
+               CASE WHEN treatment_dose > 0 AND treatment_dose IS NOT NULL THEN 1 ELSE 0 END AS dose_valid,
+               CASE WHEN visit_date IS NOT NULL THEN 1 ELSE 0 END AS date_valid
+        FROM clinical_data
+    """)
+    
+    result = con.fetchdf()  # Get as pandas-like DataFrame (DuckDB returns pandas df)
+    return result
 
-    model = IsolationForest(contamination=0.1, random_state=42)
-    anomalies = model.fit_predict(data)
-    return df.with_columns(pl.Series("anomaly", anomalies))
+# === Anomaly Detection with PyOD ===
+def detect_anomalies(df):
+    numeric_cols = ['age', 'systolic_bp', 'treatment_dose']
+    data = df[numeric_cols].fillna(0).to_numpy()  # Fill nulls
+    
+    if len(data) < 3:
+        df['anomaly'] = 1  # Normal
+        return df
+    
+    clf = iforest.IForest(contamination=0.1, random_state=42)
+    clf.fit(data)
+    df['anomaly'] = clf.predict(data)  # 0 = normal, 1 = anomaly (PyOD convention)
+    return df
 
-# === REPORTING ===
-def generate_report(df: pl.DataFrame, flagged: pl.DataFrame):
-    """Generate human-readable report and save to CSV."""
+# === Reporting ===
+def generate_report(df):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = f"{OUTPUT_DIR}/validation_report_{timestamp}.csv"
     
+    flagged = df[(df['age_valid'] == 0) | (df['bp_valid'] == 0) | 
+                 (df['dose_valid'] == 0) | (df['date_valid'] == 0) | 
+                 (df['anomaly'] == 1)]
+    
     summary = f"""
-    EDC Compliance Validation Report
-    Generated: {timestamp}
-    Total records: {len(df)}
-    Flagged records: {len(flagged)}
-    """
+EDC Compliance Validation Report
+Generated: {timestamp}
+Total records: {len(df)}
+Flagged records: {len(flagged)}
+"""
     print(summary)
     
-    if len(flagged) > 0:
+    if not flagged.empty:
         print("\nFlagged Issues:")
         print(flagged)
     else:
         print("\nAll data passed validation.")
     
-    # Save full flagged data
-    flagged.write_csv(output_path)
+    flagged.to_csv(output_path, index=False)
     print(f"\nReport saved to: {output_path}")
 
-# === MAIN EXECUTION ===
+# === MAIN ===
 def main():
-    print("Starting EDC Data Validator...")
+    print("Starting EDC Data Validator (DuckDB + PyOD)...")
     
-    # 1. Load data
-    df = pl.read_csv(INPUT_FILE)
-    print(f"Loaded {len(df)} records from {INPUT_FILE}")
+    df = load_and_validate()
+    print(f"Loaded and validated {len(df)} records")
     
-    # 2. Apply rules
-    df = apply_rules(df)
-    
-    # 3. Detect anomalies
     df = detect_anomalies(df)
     
-    # 4. Identify flagged records
-    flagged = df.filter(
-        (~pl.col("age_valid")) |
-        (~pl.col("bp_valid")) |
-        (~pl.col("dose_valid")) |
-        (~pl.col("date_valid")) |
-        (pl.col("anomaly") == -1)
-    )
-    
-    # 5. Generate & save report
-    generate_report(df, flagged)
+    generate_report(df)
 
 if __name__ == "__main__":
     main()

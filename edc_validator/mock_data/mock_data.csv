@@ -1,7 +1,0 @@
-patient_id,age,systolic_bp,visit_date,treatment_dose,condition
-101,45,120,2025-01-01,100,Hypertension
-102,25,180,2025-02-15,100,Diabetes
-103,150,90,2025-03-10,0,Control
-104,35,,2025-01-01,100,Asthma
-105,28,110,2025-04-05,150,Control
-106,92,135,2025-05-20,,Hypertension

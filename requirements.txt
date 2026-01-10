@@ -7,26 +7,20 @@
 # Last updated: January 10, 2026
 # =================================================
 
-# Data processing & validation (core of the prototype)
-polars>=1.0.0               # High-performance DataFrame library (preferred over pandas)
+# Data processing & SQL-based validation (replaces Polars/pandas)
+duckdb>=1.0.0
 
-# Anomaly detection & basic numeric support
-scikit-learn>=1.5.0
+# Anomaly / outlier detection (full replacement for scikit-learn)
+pyod>=2.0.0
+
+# Minimal numeric support (still needed for PyOD / basic math)
 numpy>=1.26.0
 
-# Future / optional dependencies (commented out until needed)
-# elasticsearch>=8.15.0     # For real-time Elasticsearch backend integration
-# kibana-api                # (if needed for programmatic Kibana dashboard control)
-# matplotlib>=3.8.0         # For simple local visualizations / reports
-# reportlab>=4.0.0          # For PDF report generation
-# flask>=3.0.0              # For future web-based eCRF interface
-# google-cloud-pubsub>=2.0.0 # For GCP Pub/Sub streaming (future cloud ingestion)
-# google-cloud-bigquery>=3.0.0 # For BigQuery export & analytics
+# Optional / future additions (commented until needed)
+# great-expectations>=0.18.0   # Declarative data validation & profiling
+# pandera>=0.20.0              # Schema validation (no Polars needed)
+# elasticsearch>=8.15.0        # Future real-time backend
+# tensorflow>=2.15.0           # Optional deep learning anomalies
+# loguru>=0.7.0                # Clean logging
 
-# Development / quality of life (optional, not required to run core)
-# pytest>=8.0.0             # For unit testing (recommended later)
-# black>=24.0.0             # Code formatter
-# ruff>=0.5.0               # Linting & formatting
-
-# How to install:
-# pip install -r requirements.txt
+# Install: pip install -r requirements.txt
