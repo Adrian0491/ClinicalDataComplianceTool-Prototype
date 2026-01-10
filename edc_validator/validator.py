@@ -1,3 +1,9 @@
+import polars as pl
+from sklearn.ensemble import IsolationForest
+import numpy as np
+from datetime import datetime
+import os
+
 """
 edc_validator.py
 
@@ -7,12 +13,6 @@ Initiated January 2026 as part of ClinicalDataComplianceTool-Prototype.
 Usage:
     python edc_validator.py
 """
-
-import polars as pl
-from sklearn.ensemble import IsolationForest
-import numpy as np
-from datetime import datetime
-import os
 
 # === CONFIG ===
 INPUT_FILE = "mock_clinical_data.csv"
