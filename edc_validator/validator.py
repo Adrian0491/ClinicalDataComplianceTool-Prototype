@@ -1,4 +1,4 @@
-import duckdb
+import duckdb  # DuckDB for SQL-based data handling
 import pyod.models.iforest as iforest  # Isolation Forest from PyOD
 import numpy as np
 from datetime import datetime
