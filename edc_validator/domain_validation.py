@@ -368,6 +368,117 @@ def validate_cm(cm: pl.DataFrame) -> pl.DataFrame:
 
     return pl.concat([f for f in findings if f.height > 0], how="vertical_relaxed") if any(f.height > 0 for f in findings) else _empty_findings()
 
+# -----------------------------
+# DM validator (Demographics anchor)
+# -----------------------------
+
+DM_ALLOWED_SEX = ["M", "F", "U"]
+DM_ALLOWED_AGEU = ["YEARS", "MONTHS", "DAYS"]
+
+
+def validate_dm(dm: pl.DataFrame) -> pl.DataFrame:
+    findings: list[pl.DataFrame] = []
+
+    findings += _require_columns(dm, ["USUBJID", "STUDYID"], "DM")
+    if findings and findings[0]["severity"][0] == "CRIT":
+        return pl.concat(findings, how="vertical_relaxed")
+
+    dm_i = _ensure_row_index(dm).with_columns([
+        pl.col("USUBJID").cast(pl.Utf8, strict=False).alias("USUBJID_S"),
+        pl.col("STUDYID").cast(pl.Utf8, strict=False).alias("STUDYID_S"),
+        pl.col("SEX").cast(pl.Utf8, strict=False).alias("SEX_S") if "SEX" in dm.columns else pl.lit(None).alias("SEX_S"),
+        pl.col("AGE").cast(pl.Float64, strict=False).alias("AGE_N") if "AGE" in dm.columns else pl.lit(None).alias("AGE_N"),
+        pl.col("AGEU").cast(pl.Utf8, strict=False).alias("AGEU_S") if "AGEU" in dm.columns else pl.lit(None).alias("AGEU_S"),
+        _parse_iso_date(pl.col("RFSTDTC")).alias("RFSTDTC_D") if "RFSTDTC" in dm.columns else pl.lit(None).alias("RFSTDTC_D"),
+        _parse_iso_date(pl.col("RFENDTC")).alias("RFENDTC_D") if "RFENDTC" in dm.columns else pl.lit(None).alias("RFENDTC_D"),
+    ])
+
+    # DM_001: USUBJID required non-empty
+    findings.append(_mk_findings(
+        dm_i,
+        pl.col("USUBJID_S").is_null() | (pl.col("USUBJID_S").str.strip_chars() == ""),
+        finding_type="SDTM_RULE", rule_id="SDTM_DM_001", severity="HIGH", domain="DM",
+        field="USUBJID", message="USUBJID is required and must be non-empty.",
+        evidence_expr=pl.col("USUBJID_S"),
+    ))
+
+    # DM_002: USUBJID must be unique in DM
+    dupes = (
+        dm_i.filter(pl.col("USUBJID_S").is_not_null() & (pl.col("USUBJID_S").str.strip_chars() != ""))
+            .with_columns(pl.col("USUBJID_S").is_duplicated().alias("IS_DUP"))
+            .filter(pl.col("IS_DUP"))
+    )
+    if dupes.height > 0:
+        findings.append(dupes.select([
+            pl.lit("SDTM_RULE").alias("finding_type"),
+            pl.lit("SDTM_DM_002").alias("rule_id"),
+            pl.lit("HIGH").alias("severity"),
+            pl.lit("DM").alias("domain"),
+            pl.lit("USUBJID").alias("field"),
+            pl.lit("USUBJID must be unique in DM.").alias("message"),
+            pl.col("row_index").alias("row_index"),
+            pl.col("USUBJID_S").alias("usubjid"),
+            pl.col("USUBJID_S").alias("evidence"),
+        ]).select([pl.col(c).cast(t, strict=False).alias(c) for c, t in FINDINGS_SCHEMA.items()]))
+
+    # DM_003: SEX controlled terminology (if present)
+    if "SEX" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("SEX_S").is_not_null() & ~pl.col("SEX_S").is_in(DM_ALLOWED_SEX),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_003", severity="MED", domain="DM",
+            field="SEX", message=f"SEX should be one of: {DM_ALLOWED_SEX}.",
+            evidence_expr=pl.col("SEX_S"),
+        ))
+
+    # DM_004: AGE reasonable bounds (if present)
+    if "AGE" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("AGE_N").is_not_null() & ((pl.col("AGE_N") < 0) | (pl.col("AGE_N") > 120)),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_004", severity="MED", domain="DM",
+            field="AGE", message="AGE should be between 0 and 120 (MVP heuristic).",
+            evidence_expr=pl.col("AGE").cast(pl.Utf8, strict=False),
+        ))
+
+    # DM_005: AGEU valid when AGE present (if present)
+    if "AGE" in dm.columns and "AGEU" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("AGE_N").is_not_null() & (pl.col("AGEU_S").is_null() | ~pl.col("AGEU_S").is_in(DM_ALLOWED_AGEU)),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_005", severity="LOW", domain="DM",
+            field="AGEU", message=f"AGEU should be one of: {DM_ALLOWED_AGEU} when AGE is present.",
+            evidence_expr=pl.col("AGEU_S"),
+        ))
+
+    # DM_006/007: RFSTDTC/RFENDTC parseable and ordered (if present)
+    if "RFSTDTC" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("RFSTDTC").is_not_null() & pl.col("RFSTDTC_D").is_null(),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_006", severity="LOW", domain="DM",
+            field="RFSTDTC", message="RFSTDTC should be ISO date YYYY-MM-DD (subset check).",
+            evidence_expr=pl.col("RFSTDTC").cast(pl.Utf8, strict=False),
+        ))
+    if "RFENDTC" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("RFENDTC").is_not_null() & pl.col("RFENDTC_D").is_null(),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_007", severity="LOW", domain="DM",
+            field="RFENDTC", message="RFENDTC should be ISO date YYYY-MM-DD (subset check).",
+            evidence_expr=pl.col("RFENDTC").cast(pl.Utf8, strict=False),
+        ))
+    if "RFSTDTC" in dm.columns and "RFENDTC" in dm.columns:
+        findings.append(_mk_findings(
+            dm_i,
+            pl.col("RFSTDTC_D").is_not_null() & pl.col("RFENDTC_D").is_not_null() & (pl.col("RFSTDTC_D") > pl.col("RFENDTC_D")),
+            finding_type="SDTM_RULE", rule_id="SDTM_DM_008", severity="HIGH", domain="DM",
+            field="RFSTDTC/RFENDTC", message="RFSTDTC must be on/before RFENDTC.",
+            evidence_expr=pl.col("RFSTDTC").cast(pl.Utf8, strict=False) + pl.lit(" > ") + pl.col("RFENDTC").cast(pl.Utf8, strict=False),
+        ))
+
+    return pl.concat([f for f in findings if f.height > 0], how="vertical_relaxed") if any(f.height > 0 for f in findings) else _empty_findings()
+
 
 # -----------------------------
 # Cross-domain rules: VS/AE and VS/CM
@@ -555,3 +666,36 @@ def validate_vs_cm(vs: pl.DataFrame, cm: pl.DataFrame) -> pl.DataFrame:
             ]).select([pl.col(c).cast(t, strict=False).alias(c) for c, t in FINDINGS_SCHEMA.items()]))
 
     return pl.concat(findings, how="vertical_relaxed") if findings else _empty_findings()
+
+def validate_dm_link(dm: pl.DataFrame, other: pl.DataFrame, other_domain: str) -> pl.DataFrame:
+    """
+    X_DMLINK_001 (HIGH): other.USUBJID must exist in DM.USUBJID
+    """
+    if "USUBJID" not in dm.columns or "USUBJID" not in other.columns:
+        return _dataset_level_finding(
+            rule_id=f"X_DMLINK_{other_domain}_000",
+            severity="CRIT",
+            domain="CROSS",
+            field="USUBJID",
+            message=f"Missing USUBJID for DM/{other_domain} link check."
+        )
+
+    dm_u = _ensure_row_index(dm).with_columns(pl.col("USUBJID").cast(pl.Utf8, strict=False).alias("USUBJID_S")).select("USUBJID_S").unique()
+    ot = _ensure_row_index(other).with_columns(pl.col("USUBJID").cast(pl.Utf8, strict=False).alias("USUBJID_S"))
+
+    orphans = (
+        ot.join(dm_u, on="USUBJID_S", how="anti")
+          .select([
+              pl.lit("CROSS_DOMAIN").alias("finding_type"),
+              pl.lit(f"X_DMLINK_{other_domain}_001").alias("rule_id"),
+              pl.lit("HIGH").alias("severity"),
+              pl.lit("CROSS").alias("domain"),
+              pl.lit("USUBJID").alias("field"),
+              pl.lit(f"{other_domain} subject not found in DM (orphan USUBJID).").alias("message"),
+              pl.col("row_index").alias("row_index"),
+              pl.col("USUBJID_S").alias("usubjid"),
+              pl.col("USUBJID_S").alias("evidence"),
+          ])
+    )
+
+    return orphans.select([pl.col(c).cast(t, strict=False).alias(c) for c, t in FINDINGS_SCHEMA.items()]) if orphans.height > 0 else _empty_findings()
