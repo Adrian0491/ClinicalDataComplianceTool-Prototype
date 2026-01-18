@@ -1,0 +1,24 @@
+{
+    "SEX": [
+        "M",
+        "F"
+    ],
+    "AESER": [
+        "Y",
+        "N"
+    ],
+    "AESEV": [
+        "MILD",
+        "MODERATE",
+        "SEVERE"
+    ],
+    "VSTESTCD": [
+        "SYSBP",
+        "DIABP",
+        "HR",
+        "TEMP",
+        "WEIGHT",
+        "HEIGHT",
+        "RESP"
+    ]
+}
