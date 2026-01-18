@@ -1,10 +1,9 @@
 import os
-from datetime import datetime
-
 import numpy as np
 import polars as pl
 from sklearn.ensemble import IsolationForest
-
+from edc_validator.sdtm_rules import validate_dm
+from datetime import datetime
 
 OUTPUT_DIR = "output"
 DEFAULT_INPUT_FILE = os.path.join("mock_data", "mock_data.csv")
