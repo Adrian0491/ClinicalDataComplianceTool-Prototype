@@ -51,7 +51,7 @@ export class FindingsComponent implements OnInit {
 
   readonly severities: Severity[]     = ['CRIT', 'HIGH', 'MED', 'LOW'];
   readonly statuses: FindingStatus[]  = ['open', 'resolved', 'waived'];
-  readonly domains = ['DM', 'VS', 'AE', 'CM', 'EX', 'LB', 'DS', 'EG', 'CROSS', 'GENERAL'];
+  readonly domains = ['DM', 'VS', 'AE', 'CM', 'EX', 'LB', 'DS', 'EG', 'QS', 'RS', 'PR', 'CROSS', 'GENERAL'];
 
   readonly filters = this.fb.nonNullable.group({
     domain:   [''],

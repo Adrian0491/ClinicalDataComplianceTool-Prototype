@@ -130,3 +130,17 @@ EG_UNITS_BY_TESTCD: dict[str, list[str]] = {
     "RR":   ["msec", "ms"],
     "HR":   ["beats/min", "bpm"],
 }
+
+# QSSTAT is CDISC-controlled: the only permitted value is "NOT DONE" (used to
+# flag an eCOA assessment that could not be completed); it is otherwise null.
+QS_ALLOWED_STAT: list[str] = ["NOT DONE"]
+
+# RECIST 1.1 response categories.
+RS_ALLOWED_ORRES: list[str] = ["CR", "PR", "SD", "PD", "NE"]
+RS_ALLOWED_EVAL: list[str] = [
+    "INVESTIGATOR", "INDEPENDENT ASSESSOR", "INDEPENDENT REVIEW COMMITTEE",
+]
+# Same convention as QSSTAT: "NOT DONE" is the only permitted value.
+RS_ALLOWED_STAT: list[str] = ["NOT DONE"]
+
+PR_ALLOWED_CAT: list[str] = ["SURGICAL", "DIAGNOSTIC", "THERAPEUTIC", "OTHER"]

@@ -10,10 +10,12 @@ from bk.logging.log_indexing import Logger
 from bk.schemas import concat_findings
 from bk.validator.domain import (
     validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
-    validate_ex, validate_lb,
-    validate_dm_link, validate_vs, validate_vs_ae, validate_vs_cm,
+    validate_ex, validate_lb, validate_pr, validate_qs, validate_rs,
+    validate_dm_link, validate_irt_consistency, validate_vs, validate_vs_ae, validate_vs_cm,
 )
-from bk.validator.anomaly import apply_rules, detect_anomalies, load_generic, to_findings
+from bk.validator.anomaly import (
+    apply_rules, build_frame_from_domains, detect_anomalies, load_generic, to_findings,
+)
 
 _log = Logger()
 
@@ -44,6 +46,9 @@ def run_sdtm_validation(
     lb = _load("lb")
     ds = _load("ds")
     eg = _load("eg")
+    qs = _load("qs")
+    rs = _load("rs")
+    pr = _load("pr")
 
     parts: list[pd.DataFrame] = []
 
@@ -55,12 +60,19 @@ def run_sdtm_validation(
     if len(lb): _log.info("Running LB validation..."),  parts.append(validate_lb(lb))
     if len(ds): _log.info("Running DS validation..."),  parts.append(validate_ds(ds))
     if len(eg): _log.info("Running EG validation..."),  parts.append(validate_eg(eg))
+    if len(qs): _log.info("Running QS validation..."),  parts.append(validate_qs(qs))
+    if len(rs): _log.info("Running RS validation..."),  parts.append(validate_rs(rs))
+    if len(pr): _log.info("Running PR validation..."),  parts.append(validate_pr(pr))
 
     if len(dm):
-        for name, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg)]:
+        for name, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg), ("QS", qs), ("RS", rs), ("PR", pr)]:
             if len(df):
                 _log.info(f"Running DM ↔ {name} link check...")
                 parts.append(validate_dm_link(dm, df, name))
+
+    if len(dm) and len(ex):
+        _log.info("Running IRT (EX/DM/DS) consistency checks...")
+        parts.append(validate_irt_consistency(dm, ex, ds))
 
     if len(vs) and len(ae):
         _log.info("Running VS ↔ AE cross-domain checks...")
@@ -69,6 +81,16 @@ def run_sdtm_validation(
     if len(vs) and len(cm):
         _log.info("Running VS ↔ CM cross-domain checks...")
         parts.append(validate_vs_cm(vs, cm))
+
+    if len(dm):
+        _log.info("Running anomaly detection across DM/VS/EX/LB/EG/QS/PR...")
+        generic = build_frame_from_domains(dm, vs, ex, lb=lb, eg=eg, qs=qs, pr=pr)
+        if len(generic):
+            generic = apply_rules(generic)
+            generic = detect_anomalies(generic)
+            anomaly_findings = to_findings(generic)
+            if len(anomaly_findings):
+                parts.append(anomaly_findings)
 
     findings = concat_findings(parts)
     ts   = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

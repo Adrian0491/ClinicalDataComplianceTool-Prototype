@@ -82,8 +82,9 @@ def run_validation_job(self, job_id: str) -> dict:
         # ── 4. Run SDTM validators ────────────────────────────────────────
         from bk.validator.domain import (
             validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
-            validate_ex, validate_lb, validate_vs,
-            validate_dm_link, validate_vs_ae, validate_vs_cm,
+            validate_ex, validate_lb, validate_pr, validate_qs, validate_rs,
+            validate_vs, validate_dm_link, validate_irt_consistency,
+            validate_vs_ae, validate_vs_cm,
         )
         from bk.schemas import concat_findings
 
@@ -95,6 +96,9 @@ def run_validation_job(self, job_id: str) -> dict:
         lb = domain_frames.get("LB", pd.DataFrame())
         ds = domain_frames.get("DS", pd.DataFrame())
         eg = domain_frames.get("EG", pd.DataFrame())
+        qs = domain_frames.get("QS", pd.DataFrame())
+        rs = domain_frames.get("RS", pd.DataFrame())
+        pr = domain_frames.get("PR", pd.DataFrame())
 
         if not dm.empty: all_findings_dfs.append(validate_dm(dm))
         if not vs.empty: all_findings_dfs.append(validate_vs(vs))
@@ -104,12 +108,17 @@ def run_validation_job(self, job_id: str) -> dict:
         if not lb.empty: all_findings_dfs.append(validate_lb(lb))
         if not ds.empty: all_findings_dfs.append(validate_ds(ds))
         if not eg.empty: all_findings_dfs.append(validate_eg(eg))
+        if not qs.empty: all_findings_dfs.append(validate_qs(qs))
+        if not rs.empty: all_findings_dfs.append(validate_rs(rs))
+        if not pr.empty: all_findings_dfs.append(validate_pr(pr))
 
         # Cross-domain
         if not dm.empty:
-            for label, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg)]:
+            for label, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg), ("QS", qs), ("RS", rs), ("PR", pr)]:
                 if not df.empty:
                     all_findings_dfs.append(validate_dm_link(dm, df, label))
+        if not dm.empty and not ex.empty:
+            all_findings_dfs.append(validate_irt_consistency(dm, ex, ds))
         if not vs.empty and not ae.empty:
             all_findings_dfs.append(validate_vs_ae(vs, ae))
         if not vs.empty and not cm.empty:
@@ -121,7 +130,7 @@ def run_validation_job(self, job_id: str) -> dict:
         )
 
         if not dm.empty:
-            generic = build_frame_from_domains(dm, vs, ex)
+            generic = build_frame_from_domains(dm, vs, ex, lb=lb, eg=eg, qs=qs, pr=pr)
             if not generic.empty:
                 generic = apply_rules(generic)
                 generic = detect_anomalies(generic)
