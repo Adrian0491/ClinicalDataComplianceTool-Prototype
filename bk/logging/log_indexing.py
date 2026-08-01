@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -25,11 +26,22 @@ class Logger:
         self._logger = logging.getLogger(f"cdct.{log_file}")
         self._logger.setLevel(level)
 
+        # Some Windows consoles default to a legacy codepage (e.g. cp1252) that
+        # can't encode the arrows/emoji used in log and summary messages.
+        # Reconfiguring to UTF-8 lets them render properly; "replace" is a
+        # last-resort fallback so an odd character never crashes logging.
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                try:
+                    stream.reconfigure(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
+
         if not self._logger.handlers:
             fmt = logging.Formatter(
                 "%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"
             )
-            fh = logging.FileHandler(self.log_path)
+            fh = logging.FileHandler(self.log_path, encoding="utf-8")
             fh.setLevel(level)
             fh.setFormatter(fmt)
             self._logger.addHandler(fh)

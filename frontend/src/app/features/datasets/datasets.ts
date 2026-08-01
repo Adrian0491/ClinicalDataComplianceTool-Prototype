@@ -47,7 +47,7 @@ export class DatasetsComponent implements OnInit {
 
   readonly columns = ['filename', 'domain', 'file_format', 'row_count', 'study_id', 'created_at'];
 
-  readonly domains = ['DM', 'VS', 'AE', 'CM', 'MULTI', 'DATASET_JSON'];
+  readonly domains = ['DM', 'VS', 'AE', 'CM', 'EX', 'LB', 'DS', 'EG', 'MULTI', 'DATASET_JSON'];
 
   readonly uploadForm = this.fb.nonNullable.group({
     study_id: ['', Validators.required],

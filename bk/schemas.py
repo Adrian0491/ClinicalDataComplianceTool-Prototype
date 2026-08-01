@@ -99,3 +99,34 @@ AE_ALLOWED_SEV: list[str] = ["MILD", "MODERATE", "SEVERE"]
 
 DM_ALLOWED_SEX:  list[str] = ["M", "F", "U"]
 DM_ALLOWED_AGEU: list[str] = ["YEARS", "MONTHS", "DAYS"]
+
+EX_ALLOWED_ROUTE: list[str] = [
+    "ORAL", "INTRAVENOUS", "SUBCUTANEOUS", "INTRAMUSCULAR",
+    "TOPICAL", "INHALATION", "TRANSDERMAL",
+]
+EX_ALLOWED_DOSU: list[str] = ["mg", "g", "mcg", "mL", "IU"]
+
+LB_ALLOWED_TESTCD: list[str] = [
+    "ALT", "AST", "BILI", "CREAT", "BUN", "HGB", "HCT",
+    "WBC", "PLAT", "NA", "K", "CL", "GLUC", "ALB",
+]
+LB_ALLOWED_NRIND: list[str] = ["NORMAL", "HIGH", "LOW", "ABNORMAL"]
+
+DS_ALLOWED_DECOD: list[str] = [
+    "COMPLETED", "DEATH", "ADVERSE EVENT", "LOST TO FOLLOW-UP",
+    "PHYSICIAN DECISION", "PROTOCOL DEVIATION", "WITHDRAWAL BY SUBJECT",
+    "STUDY TERMINATED BY SPONSOR", "LACK OF EFFICACY",
+]
+DS_ALLOWED_CAT: list[str] = ["DISPOSITION EVENT", "PROTOCOL MILESTONE"]
+
+EG_ALLOWED_TESTCD: list[str] = ["QT", "QTCF", "QTCB", "HR", "PR", "QRS", "RR"]
+
+EG_UNITS_BY_TESTCD: dict[str, list[str]] = {
+    "QT":   ["msec", "ms"],
+    "QTCF": ["msec", "ms"],
+    "QTCB": ["msec", "ms"],
+    "PR":   ["msec", "ms"],
+    "QRS":  ["msec", "ms"],
+    "RR":   ["msec", "ms"],
+    "HR":   ["beats/min", "bpm"],
+}

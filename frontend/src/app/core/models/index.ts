@@ -53,7 +53,7 @@ export interface StudyUpdate {
 
 // ── Dataset ───────────────────────────────────────────────────────────────────
 export type FileFormat = 'csv' | 'json' | 'dataset-json';
-export type Domain     = 'DM' | 'VS' | 'AE' | 'CM' | 'MULTI' | 'DATASET_JSON' | string;
+export type Domain     = 'DM' | 'VS' | 'AE' | 'CM' | 'EX' | 'LB' | 'DS' | 'EG' | 'MULTI' | 'DATASET_JSON' | string;
 
 export interface Dataset {
   id: string;

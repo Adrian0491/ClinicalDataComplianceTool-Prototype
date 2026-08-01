@@ -81,7 +81,8 @@ def run_validation_job(self, job_id: str) -> dict:
 
         # ── 4. Run SDTM validators ────────────────────────────────────────
         from bk.validator.domain import (
-            validate_ae, validate_cm, validate_dm, validate_vs,
+            validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
+            validate_ex, validate_lb, validate_vs,
             validate_dm_link, validate_vs_ae, validate_vs_cm,
         )
         from bk.schemas import concat_findings
@@ -90,21 +91,43 @@ def run_validation_job(self, job_id: str) -> dict:
         vs = domain_frames.get("VS", pd.DataFrame())
         ae = domain_frames.get("AE", pd.DataFrame())
         cm = domain_frames.get("CM", pd.DataFrame())
+        ex = domain_frames.get("EX", pd.DataFrame())
+        lb = domain_frames.get("LB", pd.DataFrame())
+        ds = domain_frames.get("DS", pd.DataFrame())
+        eg = domain_frames.get("EG", pd.DataFrame())
 
         if not dm.empty: all_findings_dfs.append(validate_dm(dm))
         if not vs.empty: all_findings_dfs.append(validate_vs(vs))
         if not ae.empty: all_findings_dfs.append(validate_ae(ae))
         if not cm.empty: all_findings_dfs.append(validate_cm(cm))
+        if not ex.empty: all_findings_dfs.append(validate_ex(ex))
+        if not lb.empty: all_findings_dfs.append(validate_lb(lb))
+        if not ds.empty: all_findings_dfs.append(validate_ds(ds))
+        if not eg.empty: all_findings_dfs.append(validate_eg(eg))
 
         # Cross-domain
         if not dm.empty:
-            for label, df in [("VS", vs), ("AE", ae), ("CM", cm)]:
+            for label, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg)]:
                 if not df.empty:
                     all_findings_dfs.append(validate_dm_link(dm, df, label))
         if not vs.empty and not ae.empty:
             all_findings_dfs.append(validate_vs_ae(vs, ae))
         if not vs.empty and not cm.empty:
             all_findings_dfs.append(validate_vs_cm(vs, cm))
+
+        # ── 4b. Anomaly detection (Isolation Forest) ───────────────────────
+        from bk.validator.anomaly import (
+            apply_rules, build_frame_from_domains, detect_anomalies, to_findings,
+        )
+
+        if not dm.empty:
+            generic = build_frame_from_domains(dm, vs, ex)
+            if not generic.empty:
+                generic = apply_rules(generic)
+                generic = detect_anomalies(generic)
+                anomaly_findings = to_findings(generic)
+                if not anomaly_findings.empty:
+                    all_findings_dfs.append(anomaly_findings)
 
         # ── 5. Persist findings ──────────────────────────────────────────
         combined = concat_findings(all_findings_dfs) if all_findings_dfs else pd.DataFrame()

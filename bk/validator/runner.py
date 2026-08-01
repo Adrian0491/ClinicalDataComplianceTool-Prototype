@@ -9,7 +9,8 @@ import pandas as pd
 from bk.logging.log_indexing import Logger
 from bk.schemas import concat_findings
 from bk.validator.domain import (
-    validate_ae, validate_cm, validate_dm,
+    validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
+    validate_ex, validate_lb,
     validate_dm_link, validate_vs, validate_vs_ae, validate_vs_cm,
 )
 from bk.validator.anomaly import apply_rules, detect_anomalies, load_generic, to_findings
@@ -39,6 +40,10 @@ def run_sdtm_validation(
     vs = _load("vs")
     ae = _load("ae")
     cm = _load("cm")
+    ex = _load("ex")
+    lb = _load("lb")
+    ds = _load("ds")
+    eg = _load("eg")
 
     parts: list[pd.DataFrame] = []
 
@@ -46,9 +51,13 @@ def run_sdtm_validation(
     if len(vs): _log.info("Running VS validation..."),  parts.append(validate_vs(vs))
     if len(ae): _log.info("Running AE validation..."),  parts.append(validate_ae(ae))
     if len(cm): _log.info("Running CM validation..."),  parts.append(validate_cm(cm))
+    if len(ex): _log.info("Running EX validation..."),  parts.append(validate_ex(ex))
+    if len(lb): _log.info("Running LB validation..."),  parts.append(validate_lb(lb))
+    if len(ds): _log.info("Running DS validation..."),  parts.append(validate_ds(ds))
+    if len(eg): _log.info("Running EG validation..."),  parts.append(validate_eg(eg))
 
     if len(dm):
-        for name, df in [("VS", vs), ("AE", ae), ("CM", cm)]:
+        for name, df in [("VS", vs), ("AE", ae), ("CM", cm), ("EX", ex), ("LB", lb), ("DS", ds), ("EG", eg)]:
             if len(df):
                 _log.info(f"Running DM ↔ {name} link check...")
                 parts.append(validate_dm_link(dm, df, name))
