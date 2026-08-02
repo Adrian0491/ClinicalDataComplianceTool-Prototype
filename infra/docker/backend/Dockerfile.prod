@@ -50,15 +50,19 @@ ENV PYTHONPATH=/app:/app/backend \
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-EXPOSE 8000
+EXPOSE 8080
 
 # Gunicorn with uvicorn workers — 2 workers per CPU core (Cloud Run: 1-2 CPUs)
-CMD ["gunicorn", "app.main:app", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--workers", "2", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "120", \
-     "--keepalive", "5", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--log-level", "info"]
+# Cloud Run injects the listen port via $PORT (8080 by default) rather than a
+# fixed value, so this needs shell form to substitute it; a hardcoded exec-form
+# --bind here previously bound 8000 while Cloud Run health-checked $PORT,
+# which always fails the startup probe regardless of app behavior.
+CMD gunicorn app.main:app \
+     --worker-class=uvicorn.workers.UvicornWorker \
+     --workers=2 \
+     --bind=0.0.0.0:${PORT:-8080} \
+     --timeout=120 \
+     --keep-alive=5 \
+     --access-logfile=- \
+     --error-logfile=- \
+     --log-level=info

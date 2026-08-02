@@ -27,8 +27,12 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY infra/docker/frontend/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the Angular build output
-# ng build outputs to dist/<project-name>/browser with Angular 17+
-COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
+# This project's build (Angular 21) outputs directly to dist/frontend, with
+# no /browser subdirectory — copying from a /browser path here silently
+# no-ops (the destination already has nginx's own stock default files) and
+# ships nginx's placeholder page instead of the app, with no build error to
+# catch it.
+COPY --from=builder /app/dist/frontend /usr/share/nginx/html
 
 # nginx needs write access to /tmp for pid file (non-root compatible)
 RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx && \
