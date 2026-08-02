@@ -8,8 +8,11 @@
 #   _REGION          = us-central1
 #   _REGISTRY_URL    = us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/integris-images
 #   _API_SERVICE     = integris-dev-api
-#   _WORKER_SERVICE  = integris-dev-worker
+#   _WORKER_SERVICE  = integris-dev-worker (a Cloud Run worker pool, not a service)
 #   _FRONTEND_SERVICE= integris-dev-frontend
+#   _MIGRATE_JOB     = name of the Cloud Run Job that runs `alembic upgrade head`
+#                      (independent of _ENV — actual job names don't always
+#                      follow the `${_ENV}-migrate` pattern)
 # =============================================================================
 
 substitutions:
@@ -19,6 +22,7 @@ substitutions:
   _API_SERVICE:      integris-dev-api
   _WORKER_SERVICE:   integris-dev-worker
   _FRONTEND_SERVICE: integris-dev-frontend
+  _MIGRATE_JOB:      ${_ENV}-migrate
 
 steps:
   # ── Step 1: Run backend tests ─────────────────────────────────────────────
@@ -110,7 +114,7 @@ steps:
       - run
       - jobs
       - execute
-      - ${_ENV}-migrate
+      - $_MIGRATE_JOB
       - --region=$_REGION
       - --wait
     # The migrate Cloud Run Job is defined separately (see ops/migrate-job.yaml)
@@ -130,18 +134,20 @@ steps:
       - --platform=managed
 
   # ── Step 8: Deploy worker ──────────────────────────────────────────────────
+  # The Celery worker has no HTTP listener, so it runs as a Cloud Run worker
+  # pool (gcloud run worker-pools), not a Cloud Run service — `run services
+  # update` would fail against it with "service not found".
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     id: deploy-worker
     waitFor: [migrate]
     entrypoint: gcloud
     args:
       - run
-      - services
+      - worker-pools
       - update
       - $_WORKER_SERVICE
       - --image=$_REGISTRY_URL/worker:$SHORT_SHA
       - --region=$_REGION
-      - --platform=managed
 
   # ── Step 9: Deploy frontend ────────────────────────────────────────────────
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
