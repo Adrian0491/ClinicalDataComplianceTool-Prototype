@@ -83,11 +83,21 @@ class GCSBackend(StorageBackend):
 
     def read(self, uri: str) -> bytes:
         # uri = gs://bucket/path/to/file
+        if not uri.startswith("gs://"):
+            raise ValueError(
+                f"GCSBackend cannot read non-gs:// URI: {uri!r} "
+                "(dataset was likely saved under a different STORAGE_BACKEND)."
+            )
         parts = uri.replace("gs://", "").split("/", 1)
         blob = self._bucket.blob(parts[1])
         return blob.download_as_bytes()
 
     def delete(self, uri: str) -> None:
+        if not uri.startswith("gs://"):
+            raise ValueError(
+                f"GCSBackend cannot delete non-gs:// URI: {uri!r} "
+                "(dataset was likely saved under a different STORAGE_BACKEND)."
+            )
         parts = uri.replace("gs://", "").split("/", 1)
         blob = self._bucket.blob(parts[1])
         blob.delete()
