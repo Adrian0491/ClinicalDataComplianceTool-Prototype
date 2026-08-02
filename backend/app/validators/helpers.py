@@ -66,6 +66,7 @@ def mk_findings(
             ev = ""
 
         usubjid = str(row["USUBJID"]) if "USUBJID" in viol.columns and not pd.isna(row.get("USUBJID")) else ""
+        row_message = f"{message} (found: '{ev}')" if ev else message
 
         rows.append({
             "finding_type": finding_type,
@@ -73,7 +74,7 @@ def mk_findings(
             "severity":     severity,
             "domain":       domain,
             "field":        field,
-            "message":      message,
+            "message":      row_message,
             "row_index":    int(row["row_index"]),
             "usubjid":      usubjid,
             "evidence":     ev,

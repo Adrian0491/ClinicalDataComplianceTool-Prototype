@@ -137,13 +137,14 @@ def to_findings(df: pd.DataFrame) -> pd.DataFrame:
         rows = []
         for _, row in bad.iterrows():
             ev = str(row[field]) if field in bad.columns and pd.notna(row.get(field)) else ""
+            msg = f"{field} failed validation rule. (found: '{ev}')" if ev else f"{field} failed validation rule."
             rows.append({
                 "finding_type": "SDTM_RULE",
                 "rule_id":      f"GENERIC_{field.upper()}_001",
                 "severity":     "MED",
                 "domain":       "GENERAL",
                 "field":        field,
-                "message":      f"{field} failed validation rule.",
+                "message":      msg,
                 "row_index":    int(row["row_index"]),
                 "usubjid":      _usubjid_of(row),
                 "evidence":     ev,
@@ -161,13 +162,17 @@ def to_findings(df: pd.DataFrame) -> pd.DataFrame:
                     f"{c}={row[c]}" for c in NUMERIC_COLS
                     if c in bad_anom.columns and pd.notna(row.get(c))
                 )
+                msg = (
+                    f"Statistical outlier detected by IsolationForest. (found: {evidence})"
+                    if evidence else "Statistical outlier detected by IsolationForest."
+                )
                 rows.append({
                     "finding_type": "ANOMALY",
                     "rule_id":      "ANOMALY_001",
                     "severity":     "LOW",
                     "domain":       "GENERAL",
                     "field":        "multivariate",
-                    "message":      "Statistical outlier detected by IsolationForest.",
+                    "message":      msg,
                     "row_index":    int(row["row_index"]),
                     "usubjid":      _usubjid_of(row),
                     "evidence":     evidence,
