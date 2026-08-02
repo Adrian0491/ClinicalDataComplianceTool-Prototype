@@ -73,10 +73,14 @@
         }
       </span>
       <button mat-flat-button
+              class="run-btn"
               [disabled]="form.invalid || !selectedDatasets().size || submitting()"
               (click)="submit()">
-        @if (submitting()) { <mat-spinner diameter="20" /> }
-        @else { <mat-icon>play_arrow</mat-icon> Run Validation }
+        @if (submitting()) {
+          <span class="run-btn-content"><mat-spinner diameter="20" /> Running…</span>
+        } @else {
+          <span class="run-btn-content"><mat-icon>play_arrow</mat-icon> Run Validation</span>
+        }
       </button>
     </div>
   </mat-card-content>

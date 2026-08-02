@@ -29,6 +29,10 @@ export class ReportsService extends ApiService {
     return this.post<ComplianceReport>(`/reports/${id}/sign`, {});
   }
 
+  deleteReport(id: string): Observable<void> {
+    return this.delete<void>(`/reports/${id}`);
+  }
+
   getDownloadUrl(id: string): string {
     return `/api/v1/reports/${id}/download`;
   }

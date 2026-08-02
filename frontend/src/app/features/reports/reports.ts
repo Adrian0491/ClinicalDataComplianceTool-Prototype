@@ -42,6 +42,7 @@ export class ReportsComponent implements OnInit {
 
   readonly loading  = signal(true);
   readonly signing  = signal<string | null>(null);  // report id being signed
+  readonly deleting = signal<string | null>(null);  // report id being deleted
   readonly reports  = signal<ComplianceReport[]>([]);
   readonly jobs     = signal<ValidationJob[]>([]);
 
@@ -86,6 +87,19 @@ export class ReportsComponent implements OnInit {
         this.notify.success('Report signed successfully');
       },
       error: () => this.signing.set(null),
+    });
+  }
+
+  delete(report: ComplianceReport): void {
+    if (!confirm('Delete this report? This cannot be undone.')) return;
+    this.deleting.set(report.id);
+    this.svc.deleteReport(report.id).subscribe({
+      next: () => {
+        this.reports.update(list => list.filter(r => r.id !== report.id));
+        this.deleting.set(null);
+        this.notify.success('Report deleted');
+      },
+      error: () => this.deleting.set(null),
     });
   }
 

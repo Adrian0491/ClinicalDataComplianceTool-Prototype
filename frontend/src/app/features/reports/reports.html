@@ -91,6 +91,18 @@
             }
           </button>
         }
+        @if (auth.hasRole('tenant_admin')) {
+          <button mat-icon-button
+                  [matTooltip]="r.signed_at ? 'Signed reports cannot be deleted (21 CFR Part 11 record)' : 'Delete report'"
+                  [disabled]="!!r.signed_at || deleting() === r.id"
+                  (click)="delete(r)">
+            @if (deleting() === r.id) {
+              <mat-spinner diameter="18" />
+            } @else {
+              <mat-icon>delete</mat-icon>
+            }
+          </button>
+        }
       </td>
     </ng-container>
 

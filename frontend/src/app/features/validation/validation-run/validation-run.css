@@ -13,5 +13,6 @@
 .filename { font-size: .82rem; color: var(--mat-sys-on-surface-variant); }
 .format-badge { font-size: .78rem; padding: 2px 8px; border-radius: 8px; background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
 .actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+.run-btn-content { display: inline-flex; align-items: center; gap: 6px; }
 .selection-info { color: var(--mat-sys-on-surface-variant); font-size: .9rem; }
 .hint { color: var(--mat-sys-on-surface-variant); font-style: italic; }

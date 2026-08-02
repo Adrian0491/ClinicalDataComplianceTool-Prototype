@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import case
 from sqlalchemy.orm import Session
 
-from app.core.rbac import require_validator, require_viewer
+from app.core.rbac import require_admin, require_validator, require_viewer
 from app.database import get_db
 from app.models.finding import Finding
 from app.models.report import ComplianceReport
@@ -288,6 +288,41 @@ def get_report(
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found.")
     return report
+
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_report(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    Delete a compliance report (admin only).
+
+    Signed reports are 21 CFR Part 11 records and are intentionally
+    immutable — they can't be deleted, only regenerated as a new report.
+    """
+    report = db.query(ComplianceReport).filter(
+        ComplianceReport.id == report_id,
+        ComplianceReport.tenant_id == current_user.tenant_id,
+    ).first()
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found.")
+    if report.signed_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Signed reports cannot be deleted (21 CFR Part 11 record).",
+        )
+
+    if report.storage_uri:
+        from app.storage.backends import get_storage
+        try:
+            get_storage().delete(report.storage_uri)
+        except Exception:
+            pass  # file already gone / unreachable — don't block deleting the record
+
+    db.delete(report)
+    db.commit()
 
 
 @router.post("/{report_id}/sign", response_model=ComplianceReportResponse)
