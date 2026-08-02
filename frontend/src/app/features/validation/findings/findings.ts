@@ -47,7 +47,7 @@ export class FindingsComponent implements OnInit {
   readonly pageIndex = signal(0);
   readonly offset    = computed(() => this.pageIndex() * this.pageSize());
 
-  readonly columns = ['severity', 'rule_id', 'domain', 'field', 'usubjid', 'row_index', 'status', 'actions'];
+  readonly columns = ['severity', 'rule_id', 'domain', 'field', 'evidence', 'usubjid', 'row_index', 'status', 'actions'];
 
   readonly severities: Severity[]     = ['CRIT', 'HIGH', 'MED', 'LOW'];
   readonly statuses: FindingStatus[]  = ['open', 'resolved', 'waived'];

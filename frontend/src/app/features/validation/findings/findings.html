@@ -95,6 +95,14 @@
         </td>
       </ng-container>
 
+      <!-- Value (evidence) -->
+      <ng-container matColumnDef="evidence">
+        <th mat-header-cell *matHeaderCellDef>Value</th>
+        <td mat-cell *matCellDef="let f">
+          <code>{{ f.evidence || '—' }}</code>
+        </td>
+      </ng-container>
+
       <!-- USUBJID -->
       <ng-container matColumnDef="usubjid">
         <th mat-header-cell *matHeaderCellDef>USUBJID</th>

@@ -101,16 +101,17 @@ def _generate_pdf(job: ValidationJob, findings: list, report_type: str, tenant_n
     # Findings detail
     if findings:
         story.append(Paragraph("Findings Detail", styles['Heading2']))
-        findings_data = [["Domain", "Rule ID", "Severity", "Field", "Message"]]
+        findings_data = [["Domain", "Rule ID", "Severity", "Field", "Value", "Message"]]
         for f in findings[:200]:  # limit to 200 rows
             findings_data.append([
                 f.domain or "",
                 f.rule_id or "",
                 f.severity or "",
                 f.field or "",
+                (f.evidence or "")[:40],
                 (f.message or "")[:80],
             ])
-        findings_table = Table(findings_data, colWidths=[0.7*inch, 1.2*inch, 0.8*inch, 1*inch, 3*inch])
+        findings_table = Table(findings_data, colWidths=[0.6*inch, 0.95*inch, 0.55*inch, 0.75*inch, 1*inch, 2.65*inch])
         findings_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A3C6E')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -151,7 +152,7 @@ def _generate_text_report(job: ValidationJob, findings: list, report_type: str, 
         lines.append(f"{sev}: {count}")
     lines.extend(["", "FINDINGS DETAIL", "-" * 40])
     for f in findings:
-        lines.append(f"[{f.severity}] {f.domain} | {f.rule_id} | {f.field} | {f.message}")
+        lines.append(f"[{f.severity}] {f.domain} | {f.rule_id} | {f.field}={f.evidence or ''} | {f.message}")
     return "\n".join(lines).encode("utf-8")
 
 
