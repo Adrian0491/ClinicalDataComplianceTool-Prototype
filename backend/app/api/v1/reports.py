@@ -7,6 +7,7 @@ import io
 import uuid
 from datetime import datetime, timezone
 from typing import List
+from xml.sax.saxutils import escape as _xml_escape
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -120,24 +121,33 @@ def _generate_pdf(job: ValidationJob, findings: list, report_type: str, tenant_n
     # Findings detail
     if findings:
         story.append(Paragraph("Findings Detail", styles['Heading2']))
-        findings_data = [["Domain", "Rule ID", "Severity", "Field", "Value", "Message"]]
+
+        # Cell content is rendered as Paragraph flowables (not raw strings) so
+        # long Value/Message text wraps within its column instead of painting
+        # over the next cell — plain strings in a reportlab Table don't wrap,
+        # they just overflow, which is what caused the garbled overlap before.
+        cell_style = ParagraphStyle('FindingsCell', parent=styles['Normal'], fontSize=7, leading=9)
+        header_style = ParagraphStyle('FindingsHeader', parent=cell_style, textColor=colors.white, fontName='Helvetica-Bold')
+
+        def _cell(text: str, style=cell_style) -> Paragraph:
+            return Paragraph(_xml_escape(text or ""), style)
+
+        findings_data = [[_cell(h, header_style) for h in ("Domain", "Rule ID", "Severity", "Field", "Value", "Message")]]
         for f in findings[:200]:  # limit to 200 rows
             findings_data.append([
-                f.domain or "",
-                f.rule_id or "",
-                f.severity or "",
-                f.field or "",
-                (f.evidence or "")[:40],
-                _truncate_message(f.message or ""),
+                _cell(f.domain or ""),
+                _cell(f.rule_id or ""),
+                _cell(f.severity or ""),
+                _cell(f.field or ""),
+                _cell((f.evidence or "")[:120]),
+                _cell(_truncate_message(f.message or "", limit=200)),
             ])
-        findings_table = Table(findings_data, colWidths=[0.6*inch, 0.95*inch, 0.55*inch, 0.75*inch, 1*inch, 2.65*inch])
+        findings_table = Table(findings_data, colWidths=[0.6*inch, 0.95*inch, 0.55*inch, 0.75*inch, 1*inch, 2.65*inch], repeatRows=1)
         findings_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A3C6E')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
             ('PADDING', (0, 0), (-1, -1), 4),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F7FA')]),
         ]))
         story.append(findings_table)
