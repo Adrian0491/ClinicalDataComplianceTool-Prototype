@@ -10,6 +10,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.core.rbac import require_validator, require_viewer
@@ -21,6 +22,24 @@ from app.models.validation import ValidationJob
 from app.schemas.report import ComplianceReportResponse, ReportGenerateRequest
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+def _truncate_message(msg: str, limit: int = 90) -> str:
+    """
+    Truncate a finding message for the PDF table, but never at the cost of
+    the trailing "(found: '...')" clause — that's the row-specific value
+    the reader actually needs; the static rule text ahead of it is the
+    same on every row and safe to cut instead.
+    """
+    if not msg or len(msg) <= limit:
+        return msg
+    marker = " (found: "
+    idx = msg.rfind(marker)
+    if idx == -1:
+        return msg[:limit].rstrip() + "…"
+    suffix = msg[idx:]
+    avail = max(limit - len(suffix), 20)
+    return msg[:avail].rstrip() + "…" + suffix
 
 
 def _generate_pdf(job: ValidationJob, findings: list, report_type: str, tenant_name: str) -> bytes:
@@ -109,7 +128,7 @@ def _generate_pdf(job: ValidationJob, findings: list, report_type: str, tenant_n
                 f.severity or "",
                 f.field or "",
                 (f.evidence or "")[:40],
-                (f.message or "")[:80],
+                _truncate_message(f.message or ""),
             ])
         findings_table = Table(findings_data, colWidths=[0.6*inch, 0.95*inch, 0.55*inch, 0.75*inch, 1*inch, 2.65*inch])
         findings_table.setStyle(TableStyle([
@@ -176,7 +195,22 @@ def generate_report(
     if job.status != "completed":
         raise HTTPException(status_code=400, detail="Validation job is not completed.")
 
-    findings = db.query(Finding).filter(Finding.job_id == job.id).all()
+    # Group by domain, then true severity priority (not alphabetical —
+    # 'LOW' would otherwise sort before 'MED') — an unordered query previously
+    # left findings in arbitrary DB row order, interleaving domains/severities.
+    severity_rank = case(
+        (Finding.severity == "CRIT", 0),
+        (Finding.severity == "HIGH", 1),
+        (Finding.severity == "MED", 2),
+        (Finding.severity == "LOW", 3),
+        else_=4,
+    )
+    findings = (
+        db.query(Finding)
+        .filter(Finding.job_id == job.id)
+        .order_by(Finding.domain, severity_rank, Finding.row_index)
+        .all()
+    )
 
     # Get tenant name
     tenant_name = str(current_user.tenant_id)

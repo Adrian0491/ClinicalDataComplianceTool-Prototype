@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.core.rbac import get_current_user, require_validator, require_viewer
@@ -44,8 +45,17 @@ def list_findings(
     if find_status: q = q.filter(Finding.status   == find_status.lower())
     if usubjid:     q = q.filter(Finding.usubjid  == usubjid)
 
+    # True severity priority, not alphabetical — plain `.order_by(Finding.severity)`
+    # would sort 'LOW' ahead of 'MED' since L < M.
+    severity_rank = case(
+        (Finding.severity == "CRIT", 0),
+        (Finding.severity == "HIGH", 1),
+        (Finding.severity == "MED", 2),
+        (Finding.severity == "LOW", 3),
+        else_=4,
+    )
     return (
-        q.order_by(Finding.severity, Finding.created_at)
+        q.order_by(severity_rank, Finding.created_at)
         .offset(offset)
         .limit(limit)
         .all()
