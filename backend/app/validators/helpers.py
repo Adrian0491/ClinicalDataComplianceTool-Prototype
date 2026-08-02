@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from bk.schemas import FINDINGS_COLUMNS, FINDINGS_DTYPES, dataset_finding, empty_findings
+from app.validators.schemas import (
+    FINDINGS_COLUMNS,
+    FINDINGS_DTYPES,
+    dataset_finding,
+    empty_findings,
+)
 
 
 def ensure_row_index(df: pd.DataFrame) -> pd.DataFrame:

@@ -3,15 +3,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
-from bk.schemas import (
+from app.validators.schemas import (
     FINDINGS_COLUMNS,
     FINDINGS_DTYPES,
     concat_findings,
-    dataset_finding,
     empty_findings,
 )
 
@@ -32,11 +31,11 @@ class DatasetJsonIO:
         }
         return pd.DataFrame([row], columns=FINDINGS_COLUMNS).astype(FINDINGS_DTYPES)
 
-    def load(self, path: str | Path) -> Dict[str, Any]:
+    def load(self, path: str | Path) -> dict[str, Any]:
         with open(path, encoding="utf-8") as fh:
             return json.load(fh)
 
-    def validate_top_level(self, doc: Dict[str, Any]) -> pd.DataFrame:
+    def validate_top_level(self, doc: dict[str, Any]) -> pd.DataFrame:
         findings = []
         if not isinstance(doc, dict):
             return self._finding("DJ_001", "CRIT", "root",
@@ -57,16 +56,16 @@ class DatasetJsonIO:
                                           "itemGroupData must be an object."))
         return concat_findings(findings)
 
-    def _get_ig_map(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_ig_map(self, doc: dict[str, Any]) -> dict[str, Any]:
         for k in ("clinicalData", "referenceData"):
             if k in doc:
                 return doc[k].get("itemGroupData", {})
         return {}
 
-    def list_itemgroups(self, doc: Dict[str, Any]) -> List[str]:
+    def list_itemgroups(self, doc: dict[str, Any]) -> list[str]:
         return list(self._get_ig_map(doc).keys())
 
-    def infer_oid(self, doc: Dict[str, Any], domain: str) -> Optional[str]:
+    def infer_oid(self, doc: dict[str, Any], domain: str) -> str | None:
         domain_u = domain.strip().upper()
         ig = self._get_ig_map(doc)
         for k, ds in ig.items():
@@ -78,8 +77,8 @@ class DatasetJsonIO:
                 return str(k)
         return None
 
-    def itemgroup_to_df(self, doc: Dict[str, Any], oid: str
-                        ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def itemgroup_to_df(self, doc: dict[str, Any], oid: str
+                        ) -> tuple[pd.DataFrame, pd.DataFrame]:
         findings = []
         ig  = self._get_ig_map(doc)
         ds  = ig.get(oid)
@@ -117,8 +116,8 @@ class DatasetJsonIO:
         df = pd.DataFrame(rows, columns=col_names) if rows else pd.DataFrame(columns=col_names)
         return df, concat_findings(findings)
 
-    def domain_to_df(self, doc: Dict[str, Any], domain: str
-                     ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[str]]:
+    def domain_to_df(self, doc: dict[str, Any], domain: str
+                     ) -> tuple[pd.DataFrame, pd.DataFrame, str | None]:
         oid = self.infer_oid(doc, domain)
         if oid is None:
             return pd.DataFrame(), self._finding(
@@ -132,26 +131,30 @@ class DatasetJsonIO:
 
 @dataclass
 class DatasetJsonValidationResult:
-    datasets: Dict[str, pd.DataFrame] = field(default_factory=dict)
+    datasets: dict[str, pd.DataFrame] = field(default_factory=dict)
     findings: pd.DataFrame            = field(default_factory=empty_findings)
 
 
 class DatasetJsonValidator:
     """Orchestrates Dataset-JSON structural + SDTM domain validation."""
 
-    def __init__(self, io: Optional[DatasetJsonIO] = None) -> None:
+    def __init__(self, io: DatasetJsonIO | None = None) -> None:
         self.io = io or DatasetJsonIO()
 
-    def validate(self, doc: Dict[str, Any],
-                 domains: Optional[List[str]] = None) -> DatasetJsonValidationResult:
-        from bk.validator.domain import (
-            validate_ae, validate_cm, validate_dm, validate_dm_link, validate_vs,
+    def validate(self, doc: dict[str, Any],
+                 domains: list[str] | None = None) -> DatasetJsonValidationResult:
+        from app.validators.domain import (
+            validate_ae,
+            validate_cm,
+            validate_dm,
+            validate_dm_link,
+            validate_vs,
         )
         if domains is None:
             domains = ["DM", "VS", "AE", "CM"]
 
-        datasets: Dict[str, pd.DataFrame] = {}
-        parts: List[pd.DataFrame] = [self.io.validate_top_level(doc)]
+        datasets: dict[str, pd.DataFrame] = {}
+        parts: list[pd.DataFrame] = [self.io.validate_top_level(doc)]
 
         for domain in domains:
             df, f, _ = self.io.domain_to_df(doc, domain)

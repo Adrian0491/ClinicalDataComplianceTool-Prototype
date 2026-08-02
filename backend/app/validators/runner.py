@@ -6,16 +6,32 @@ from pathlib import Path
 
 import pandas as pd
 
-from bk.logging.log_indexing import Logger
-from bk.schemas import concat_findings
-from bk.validator.domain import (
-    validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
-    validate_ex, validate_lb, validate_pr, validate_qs, validate_rs,
-    validate_dm_link, validate_irt_consistency, validate_vs, validate_vs_ae, validate_vs_cm,
+from app.validators.anomaly import (
+    apply_rules,
+    build_frame_from_domains,
+    detect_anomalies,
+    load_generic,
+    to_findings,
 )
-from bk.validator.anomaly import (
-    apply_rules, build_frame_from_domains, detect_anomalies, load_generic, to_findings,
+from app.validators.domain import (
+    validate_ae,
+    validate_cm,
+    validate_dm,
+    validate_dm_link,
+    validate_ds,
+    validate_eg,
+    validate_ex,
+    validate_irt_consistency,
+    validate_lb,
+    validate_pr,
+    validate_qs,
+    validate_rs,
+    validate_vs,
+    validate_vs_ae,
+    validate_vs_cm,
 )
+from app.validators.log_utils import Logger
+from app.validators.schemas import concat_findings
 
 _log = Logger()
 

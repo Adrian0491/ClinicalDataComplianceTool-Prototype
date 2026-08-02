@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 
-from bk.schemas import FINDINGS_COLUMNS, FINDINGS_DTYPES, concat_findings, empty_findings
+from app.validators.schemas import (
+    FINDINGS_COLUMNS,
+    concat_findings,
+    empty_findings,
+)
 
 # SDTM-aligned column names used by the generic validation pipeline.
 # AGE      → Demographics (DM.AGE)

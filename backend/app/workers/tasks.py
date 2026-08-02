@@ -35,12 +35,11 @@ def run_validation_job(self, job_id: str) -> dict:
 
     Returns a summary dict with counts by severity.
     """
+    from app.config import get_settings
     from app.database import SessionLocal
     from app.models.dataset import Dataset
-    from app.models.finding import Finding
     from app.models.validation import ValidationJob
     from app.storage.backends import get_storage
-    from app.config import get_settings
 
     settings = get_settings()
     db = SessionLocal()
@@ -80,13 +79,24 @@ def run_validation_job(self, job_id: str) -> dict:
                 domain_frames[dataset.domain] = df
 
         # ── 4. Run SDTM validators ────────────────────────────────────────
-        from bk.validator.domain import (
-            validate_ae, validate_cm, validate_dm, validate_ds, validate_eg,
-            validate_ex, validate_lb, validate_pr, validate_qs, validate_rs,
-            validate_vs, validate_dm_link, validate_irt_consistency,
-            validate_vs_ae, validate_vs_cm,
+        from app.validators.domain import (
+            validate_ae,
+            validate_cm,
+            validate_dm,
+            validate_dm_link,
+            validate_ds,
+            validate_eg,
+            validate_ex,
+            validate_irt_consistency,
+            validate_lb,
+            validate_pr,
+            validate_qs,
+            validate_rs,
+            validate_vs,
+            validate_vs_ae,
+            validate_vs_cm,
         )
-        from bk.schemas import concat_findings
+        from app.validators.schemas import concat_findings
 
         dm = domain_frames.get("DM", pd.DataFrame())
         vs = domain_frames.get("VS", pd.DataFrame())
@@ -125,8 +135,11 @@ def run_validation_job(self, job_id: str) -> dict:
             all_findings_dfs.append(validate_vs_cm(vs, cm))
 
         # ── 4b. Anomaly detection (Isolation Forest) ───────────────────────
-        from bk.validator.anomaly import (
-            apply_rules, build_frame_from_domains, detect_anomalies, to_findings,
+        from app.validators.anomaly import (
+            apply_rules,
+            build_frame_from_domains,
+            detect_anomalies,
+            to_findings,
         )
 
         if not dm.empty:
@@ -195,7 +208,7 @@ def _parse_dataset(
     if fmt in ("json", "dataset-json"):
         doc = json.loads(raw_bytes.decode("utf-8"))
         if fmt == "dataset-json":
-            from ingest.datasets_json import DatasetJsonIO
+            from app.ingest.datasets_json import DatasetJsonIO
             dio = DatasetJsonIO()
             top_findings = dio.validate_top_level(doc)
             if not top_findings.empty and top_findings["severity"].eq("CRIT").any():

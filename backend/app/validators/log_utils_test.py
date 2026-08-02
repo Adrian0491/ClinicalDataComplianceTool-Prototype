@@ -1,5 +1,5 @@
 """
-Tests for bk.logging.log_indexing.Logger
+Tests for app.validators.log_utils.Logger
 
 Covers:
   - log methods write to the log file with correct level tags
@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from bk.logging.log_indexing import Logger
+from app.validators.log_utils import Logger
 
 
 class TestLogger(unittest.TestCase):

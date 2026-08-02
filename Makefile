@@ -160,3 +160,10 @@ test-validation:
 .PHONY: test-findings
 test-findings:
 	$(BACKEND) $(PYTHONPATH_BACKEND) pytest tests/test_findings.py -v
+
+# app/validators + app/ingest are pure pandas-in/pandas-out — no DB needed,
+# so this is kept separate from 'make test' rather than folded into the
+# slower Postgres-backed integration suite.
+.PHONY: test-validators
+test-validators:
+	$(BACKEND) $(PYTHONPATH_BACKEND) pytest app/validators/ app/ingest/ -v

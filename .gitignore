@@ -73,10 +73,15 @@ docker-compose.override.yml
 # ── Stale / legacy files (pre-rewrite) ────────────────────────────────────────
 # These are old files that predate the CDTool FastAPI/Angular rewrite.
 # They are excluded so they don't clutter the repo.
-bk/
+#
+# bk/ and main_validators.py used to be listed here as "stale" — they weren't:
+# bk/ was load-bearing production code (imported by backend/app/workers/tasks.py)
+# that happened to also be missing from both production Dockerfiles, which is
+# what actually made validation jobs crash in deployment. It's been merged into
+# backend/app/validators/ (and app/ingest/) and no longer exists as a separate
+# tree; main_validators.py was genuinely dead and has been deleted outright.
 frontend/test_tiral_mock/
 frontend/ts/
-main_validators.py
 cleanup.sh
 __init__.py
 /package.json

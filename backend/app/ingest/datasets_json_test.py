@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from ingest.datasets_json import DatasetJsonIO
+from app.ingest.datasets_json import DatasetJsonIO
 
 
 class TestDatasetJsonIO(unittest.TestCase):

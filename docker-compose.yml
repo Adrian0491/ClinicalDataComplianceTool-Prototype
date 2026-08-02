@@ -79,7 +79,7 @@ services:
   # ── FastAPI application server ────────────────────────────────────────────
   api:
     build:
-      context: .                       # project root (so bk/ and backend/ both visible)
+      context: .                       # project root — backend/Dockerfile does `COPY . .`
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     ports:
@@ -109,8 +109,6 @@ services:
         --port 8000
         --reload
         --reload-dir /app/backend
-        --reload-dir /app/bk
-        --reload-dir /app/ingest
 
   # ── Celery worker (validation jobs) ──────────────────────────────────────
   worker:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import unittest
-from bk.schemas import *
+
+from app.validators.schemas import *
+
 
 class TestSchemas(unittest.TestCase):
     

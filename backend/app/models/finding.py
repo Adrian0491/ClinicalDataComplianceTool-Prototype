@@ -8,11 +8,11 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, TenantScopedMixin
+from app.models.base import Base, TenantScopedMixin, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.validation import ValidationJob
     from app.models.user import User
+    from app.models.validation import ValidationJob
 
 
 class Finding(Base, TimestampMixin, TenantScopedMixin):
@@ -46,7 +46,7 @@ class Finding(Base, TimestampMixin, TenantScopedMixin):
         index=True,
     )
 
-    # Mirror of the bk.schemas FINDINGS_COLUMNS structure
+    # Mirror of the app.validators.schemas FINDINGS_COLUMNS structure
     finding_type: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # SDTM_RULE | CROSS_DOMAIN | DATASET_JSON | ANOMALY
@@ -76,8 +76,8 @@ class Finding(Base, TimestampMixin, TenantScopedMixin):
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    job:      Mapped["ValidationJob"] = relationship("ValidationJob", back_populates="findings")
-    resolver: Mapped["User | None"]   = relationship("User", foreign_keys=[resolved_by])
+    job:      Mapped[ValidationJob] = relationship("ValidationJob", back_populates="findings")
+    resolver: Mapped[User | None]   = relationship("User", foreign_keys=[resolved_by])
 
     def __repr__(self) -> str:
         return (
