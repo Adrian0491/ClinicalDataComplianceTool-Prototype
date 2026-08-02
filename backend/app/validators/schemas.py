@@ -81,13 +81,13 @@ def concat_findings(parts: list[pd.DataFrame]) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 VS_ALLOWED_TESTCD: list[str] = [
-    "SYSBP", "DIABP", "HR", "TEMP", "WEIGHT", "HEIGHT", "RESP",
+    "SYSBP", "DIABP", "PULSE", "TEMP", "WEIGHT", "HEIGHT", "RESP",
 ]
 
 VS_UNITS_BY_TESTCD: dict[str, list[str]] = {
     "SYSBP":  ["mmHg"],
     "DIABP":  ["mmHg"],
-    "HR":     ["bpm"],
+    "PULSE":  ["beats/min", "bpm"],
     "RESP":   ["breaths/min", "bpm"],
     "TEMP":   ["C", "F"],
     "WEIGHT": ["kg", "g", "lb"],
