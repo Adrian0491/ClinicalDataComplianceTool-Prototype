@@ -26,13 +26,13 @@ RUN rm /etc/nginx/conf.d/default.conf
 # Copy our custom config
 COPY infra/docker/frontend/nginx.conf /etc/nginx/nginx.conf
 
-# Copy the Angular build output
-# This project's build (Angular 21) outputs directly to dist/frontend, with
-# no /browser subdirectory — copying from a /browser path here silently
-# no-ops (the destination already has nginx's own stock default files) and
-# ships nginx's placeholder page instead of the app, with no build error to
-# catch it.
-COPY --from=builder /app/dist/frontend /usr/share/nginx/html
+# Copy the Angular build output. This project has SSR/prerendering enabled
+# (see angular.json), so the browser build's CSR entry point is named
+# index.csr.html rather than index.html — nginx's `index` directive won't
+# find it under that name, and silently falls through to serving its own
+# stock default page instead, with no build error to catch it.
+COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
+RUN mv /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html
 
 # nginx needs write access to /tmp for pid file (non-root compatible)
 RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx && \
